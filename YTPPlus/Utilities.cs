@@ -81,6 +81,15 @@ namespace YTPPlus
                 System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
                 startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
                 startInfo.FileName = FFPROBE;
+                //terrible hack to unfuck the path what the fuck is this shit
+                if (file.StartsWith("\""))
+                {
+                    file = file.Substring(1);
+                }
+                if (file.EndsWith("\""))
+                {
+                    file = file.Substring(0, file.Length - 1);
+                }
                 startInfo.Arguments = "-i \"" + file
                         + "\" -show_entries format=duration"
                         + " -v quiet"
@@ -103,10 +112,58 @@ namespace YTPPlus
 
                 process.WaitForExit();
                 Console.WriteLine(s);
+                if (!getAudioStream(file))
+                {
+                    addAudioStream(file);
+                }
+
                 return s;
 
             }
             catch (Exception ex) { Console.WriteLine(ex.StackTrace); return ""; }
+        }       
+        public bool getAudioStream(string file)
+        {
+            try
+            {
+                System.Diagnostics.Process process = new System.Diagnostics.Process();
+                System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+                startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+                startInfo.FileName = FFPROBE;
+                //terrible hack to unfuck the path what the fuck is this shit
+                if (file.StartsWith("\""))
+                {
+                    file = file.Substring(1);
+                }
+                if (file.EndsWith("\""))
+                {
+                    file = file.Substring(0, file.Length - 1);
+                }
+                startInfo.Arguments = "-i \"" + file
+                                              + "\" -show_streams"
+                                              + " -select_streams a"
+                                              + " -loglevel error\"";
+                startInfo.UseShellExecute = false;
+                startInfo.RedirectStandardOutput = true;
+                process.StartInfo = startInfo;
+                process.Start();
+                string s = "";
+                // Read stdout synchronously (on this thread)
+
+                while (true)
+                {
+                    var line = process.StandardOutput.ReadLine();
+                    if (line == null)
+                        break;
+                    Console.WriteLine(line);
+                    s = line;
+                }
+
+                process.WaitForExit();
+                Console.WriteLine(s);
+                return s.Length == 0;
+            }
+            catch (Exception ex) { Console.WriteLine(ex.StackTrace); return false; }
         }
 
         /**
@@ -125,6 +182,15 @@ namespace YTPPlus
                 System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
                 startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
                 startInfo.FileName = FFMPEG;
+                //terrible hack to unfuck the path what the fuck is this shit
+                if (video.StartsWith("\""))
+                {
+                    video = video.Substring(1);
+                }
+                if (video.EndsWith("\""))
+                {
+                    video = video.Substring(0, video.Length - 1);
+                }
                 startInfo.Arguments = "-i \"" + video
                         + "\" -ss " + startTime.ToString("0.#########################", new CultureInfo("en-US"))
                         + " -to " + endTime.ToString("0.#########################", new CultureInfo("en-US"))
@@ -179,6 +245,15 @@ namespace YTPPlus
                 System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
                 startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
                 startInfo.FileName = FFMPEG;
+                //terrible hack to unfuck the path what the fuck is this shit
+                if (video.StartsWith("\""))
+                {
+                    video = video.Substring(1);
+                }
+                if (video.EndsWith("\""))
+                {
+                    video = video.Substring(0, video.Length - 1);
+                }
                 startInfo.Arguments = "-i \"" + video
                         + "\" -ar 44100"
                         + " -ac 1"
@@ -219,6 +294,54 @@ namespace YTPPlus
             catch (Exception ex) { Console.WriteLine(ex.StackTrace); }
         }
 
+        private void addAudioStream(string path)
+        { 
+            try
+            {
+                var command1 = $"ffmpeg -y -f lavfi -i anullsrc -i \"{path}\" -c:v copy -c:a aac -map 0:a -map 1:v -shortest \"{path}\"";
+                Console.WriteLine(command1);
+
+                System.Diagnostics.Process process = new System.Diagnostics.Process();
+                System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+                startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Normal;
+                startInfo.FileName = FFMPEG;
+                startInfo.Arguments = command1;
+                startInfo.UseShellExecute = false;
+                startInfo.RedirectStandardOutput = true;
+                process.StartInfo = startInfo;
+                process.Start();
+                // Read stderr synchronously (on another thread)
+
+                string errorText = null;
+                var stderrThread = new Thread(() => { errorText = process.StandardOutput.ReadToEnd(); });
+                stderrThread.Start();
+
+                // Read stdout synchronously (on this thread)
+
+                while (true)
+                {
+                    var line = process.StandardOutput.ReadLine();
+                    if (line == null)
+                        break;
+
+                    Console.WriteLine(line);
+                }
+
+                process.WaitForExit();
+                stderrThread.Join();
+
+
+                //cmdLine = CommandLine.parse(command2);
+                //executor = new DefaultExecutor();
+                //exitValue = executor.execute(cmdLine);
+
+                //temp.delete();
+
+            }
+            catch (Exception ex) { Console.WriteLine(ex.StackTrace); }
+        }
+
+
         /**
          * Concatenate videos by count
          *
@@ -238,7 +361,7 @@ namespace YTPPlus
                 {
                     if (File.Exists(TEMP + "video" + i + ".mp4"))
                     {
-                        command1 += (" -i " + TEMP + "video" + i + ".mp4");
+                        command1 += (" -i \"" + TEMP + "video" + i + ".mp4\"");
                     }
                 }
                 command1 += (" -filter_complex \"");
@@ -256,8 +379,10 @@ namespace YTPPlus
                     command1 += ("[" + i + ":v:0][" + i + ":a:0]");
                 }
 
-                //realcount +=1;
-                command1 += ("concat=n=" + realcount + ":v=1:a=1[outv][outa]\" -map \"[outv]\" -map \"[outa]\" -y " + ou);
+
+
+                //realcount +=1;z
+                command1 += ("concat=n=" + realcount + ":v=1:a=1[outv][outa]\" -map \"[outv]\" -map \"[outa]\" -y " + "\"" + ou + "\"");
                 Console.WriteLine(command1);
 
                 System.Diagnostics.Process process = new System.Diagnostics.Process();

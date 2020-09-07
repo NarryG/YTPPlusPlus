@@ -678,10 +678,6 @@ namespace YTPPlusPlus
                     sources[sources.GetUpperBound(0)] = file;
                     Material.Text += file + "\n";
                     //assuming these all don't work
-                    if (file.Contains(" "))
-                    {
-                        alert("One or more materials added in this batch has a space in its path or file name. While YTP++ will still try to render with the material in question, be aware that this may cause a render failure.");
-                    }
                     else if (file.Contains("+"))
                     {
                         alert("One or more materials added in this batch has a + symbol in its path or file name. While YTP++ will still try to render with the material in question, be aware that this may cause a render failure.");
@@ -706,6 +702,10 @@ namespace YTPPlusPlus
                     {
                         alert("One or more materials added in this batch has a ~ symbol in its path or file name. While YTP++ will still try to render with the material in question, be aware that this may cause a render failure.");
                     }
+                   // if (file.Contains(" "))
+                   // {
+                   //     alert("One or more materials added in this batch has a space in its path or file name. While YTP++ will still try to render with the material in question, be aware that this may cause a render failure.");
+                   // }
                 }
             }
         }
